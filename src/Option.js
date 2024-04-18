@@ -299,14 +299,16 @@ export default function Option({
 											</div>
 										</div>
 									</div>
-									<div className="leg-amenities-container">
-										{leg.amenities.sort().map((amenity, i) => (
-											<div key={`amenity-${i}`}>
-												{getAmenityIcon(amenity)}
-												<span>{amenity}</span>
-											</div>
-										))}
-									</div>
+									{leg.amenities && leg.amenities.length > 0 && (
+										<div className="leg-amenities-container">
+											{leg.amenities.sort().map((amenity, i) => (
+												<div key={`amenity-${i}`}>
+													{getAmenityIcon(amenity)}
+													<span>{amenity}</span>
+												</div>
+											))}
+										</div>
+									)}
 								</div>
 								{k + 1 < trip.travelLegs.length && (
 									<div className="layover-container">
