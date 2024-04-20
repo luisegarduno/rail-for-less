@@ -1,0 +1,14 @@
+{
+  "files": {
+    "main.css": "/rail-for-less/static/css/main.246d543e.css",
+    "main.js": "/rail-for-less/static/js/main.12e2e5c0.js",
+    "static/media/ProductSans-Regular.ttf": "/rail-for-less/static/media/ProductSans-Regular.2765c69613690b1b9c03.ttf",
+    "index.html": "/rail-for-less/index.html",
+    "main.246d543e.css.map": "/rail-for-less/static/css/main.246d543e.css.map",
+    "main.12e2e5c0.js.map": "/rail-for-less/static/js/main.12e2e5c0.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.246d543e.css",
+    "static/js/main.12e2e5c0.js"
+  ]
+}
