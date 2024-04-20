@@ -4,9 +4,9 @@
 
 Please see the following instructions for deployment via Windows
 
-1. Clone the [Rails-For-Less](https://github.com/tikkisean/rail-for-less) repository
+1. Clone the [Rails-For-Less](https://github.com/luisegarduno/rail-for-less) repository
 ```bash
-git clone https://github.com/tikkisean/rail-for-less.git
+git clone https://github.com/luisegarduno/rail-for-less.git
 ```
 
 2. Add the following line to `rail-for-less/client/package.json` 

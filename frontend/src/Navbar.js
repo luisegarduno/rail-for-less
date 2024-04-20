@@ -18,7 +18,7 @@ export default function Navbar() {
 				</a>
 				<a href="mailto:contact@railforless.us">Contact</a>
 				<a
-					href="https://github.com/tikkisean/rail-for-less"
+					href="https://github.com/luisegarduno/rail-for-less"
 					rel="noopener noreferrer"
 					target="_blank"
 				>
