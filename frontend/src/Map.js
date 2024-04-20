@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import {useCallback, useEffect, useMemo, useState } from "react";
 import * as d3 from "d3";
 import "./Map.css";
 import ZoomOutMapIcon from "@mui/icons-material/ZoomOutMap";
@@ -15,10 +15,10 @@ export default function Map({
 	routeLinks,
 }) {
 	const [loaded, setLoaded] = useState(false);
-	const silverService = ["Palmetto", "Silver-Meteor", "Silver-Star"];
+	const silverService = useMemo(() => ["Palmetto", "Silver-Meteor", "Silver-Star"], []);
 
-	const getRouteID = (route) =>
-		silverService.includes(route) ? "Silver-Service_Palmetto" : route;
+	const getRouteID = useCallback((route) =>
+		silverService.includes(route) ? "Silver-Service_Palmetto" : route, [silverService]);
 
 	useEffect(() => {
 		setTimeout(() => {
@@ -26,7 +26,7 @@ export default function Map({
 				d3.select(`#${getRouteID(route)}`).dispatch("click");
 			}
 		}, 400);
-	}, []);
+	}, [getRouteID, route]);
 
 	useEffect(() => {
 		const prevOriginElement = d3.select(".station[origin='true']");
@@ -53,7 +53,7 @@ export default function Map({
 				d3.select(`#${destination.id}`).dispatch("click");
 			}
 		}
-	}, [updateMap]);
+	}, [destination, origin, updateMap]);
 
 	let mapContainer, width, height, scaleExtent, zoom;
 

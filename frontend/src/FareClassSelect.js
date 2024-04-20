@@ -14,7 +14,7 @@ export default function FareClassSelect({
 		if (!values.includes(value)) {
 			setValue("Any class");
 		}
-	}, [values]);
+	}, [setValue, value, values]);
 
 	return (
 		<Select

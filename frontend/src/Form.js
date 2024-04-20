@@ -1,7 +1,7 @@
 import Ably from "ably/promises";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import pako from "pako";
 import DateRangeSelect from "./DateRangeSelect";
 import FareClassSelect from "./FareClassSelect";
@@ -30,6 +30,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import Fab from "@mui/material/Fab";
 import IconButton from "@mui/material/IconButton";
 import Snackbar from "@mui/material/Snackbar";
+import { useRef } from 'react';
 dayjs.extend(utc);
 
 export default function Form({
@@ -104,7 +105,7 @@ export default function Form({
 			: "name-and-code"
 	);
 
-	async function geolocate(stationsData) {
+	const geolocate = useCallback(async (stationsData) => {
 		if (localStorage.getItem("geolocate") === "false" || origin) {
 			return;
 		}
@@ -135,42 +136,44 @@ export default function Form({
 		setStations(sortedStationsData);
 		setOrigin(sortedStationsData[0]);
 		setUpdateMap(!updateMap);
-	}
+	}, [origin, setStations, setOrigin, setUpdateMap, updateMap]);
 
 	let wakeRes;
-	async function wake() {
-		wakeRes = await fetch(
+	const wakeResRef = useRef(null);
+
+	const wake = useCallback(async () => {
+		wakeResRef.current = await fetch(
 			`https://${process.env.REACT_APP_API_SUBDOMAIN}.railsave.rs/wake`
 		);
-	}
+	}, []);
 	const [wakeError, setWakeError] = useState(false);
 	const [browserDialog, setBrowserDialog] = useState(false);
 
-	function startup() {
-		wake();
-		setTimeout(() => {
-			if (!wakeRes || wakeRes.status !== 200) {
-				setWakeError(true);
-			}
-		}, 10000);
+	useEffect(() => {
+		function startup() {
+			wake();
+			setTimeout(() => {
+				if (!wakeRes || wakeRes.status !== 200) {
+					setWakeError(true);
+				}
+			}, 10000);
 
-		if (!localStorage.getItem("geolocate")) {
-			localStorage.setItem("geolocate", "true");
-			localStorage.setItem("stationFormat", "name-and-code");
+			if (!localStorage.getItem("geolocate")) {
+				localStorage.setItem("geolocate", "true");
+				localStorage.setItem("stationFormat", "name-and-code");
+			}
+
+			fetch("/json/stations.json")
+				.then((res) => res.json())
+				.then((data) => {
+					data = data
+						.sort((a, b) => a.stateLong.localeCompare(b.stateLong))
+						.map((station) => ({ ...station, group: station.stateLong }));
+					setStations(data);
+					setTimeout(() => geolocate(data), 500);
+				});
 		}
 
-		fetch("/json/stations.json")
-			.then((res) => res.json())
-			.then((data) => {
-				data = data
-					.sort((a, b) => a.stateLong.localeCompare(b.stateLong))
-					.map((station) => ({ ...station, group: station.stateLong }));
-				setStations(data);
-				setTimeout(() => geolocate(data), 500);
-			});
-	}
-
-	useEffect(() => {
 		if (
 			navigator.userAgent.includes("Firefox") &&
 			!localStorage.getItem("browserWarning")
@@ -179,7 +182,7 @@ export default function Form({
 		} else {
 			startup();
 		}
-	}, []);
+	}, [setStations, geolocate, wake, wakeRes]);
 
 	function setBrowserWarning() {
 		localStorage.setItem("browserWarning", "true");
@@ -216,7 +219,7 @@ export default function Form({
 					: dateRangeStart.add(89, "d")
 			);
 		}
-	}, [tripType]);
+	}, [dateRangeEnd, dateRangeStart, setDateRangeEnd, setMaxDateRangeEnd, tripType]);
 
 	let errorType = 0;
 	let errorText = "";
@@ -253,7 +256,7 @@ export default function Form({
 			}
 			setMutualRoutes(newMutualRoutes);
 		}
-	}, [origin, destination]);
+	}, [origin, destination, setMutualRoutes]);
 
 	const [sleeperOpen, setSleeperOpen] = useState(false);
 

@@ -9,8 +9,8 @@ import DialogTitle from "@mui/material/DialogTitle";
 
 export default function AmtrakForm({ i, option, travelerTypes, tripType }) {
 	const travelerTypesArray = [];
-	for (const [type, num] of Object.entries(travelerTypes)) {
-		for (const i of [...Array(num).keys()]) {
+	Object.entries(travelerTypes).forEach(([type, num]) => {
+		[...Array(num).keys()].forEach(() => {
 			travelerTypesArray.push(
 				type === "numAdults"
 					? "Adult"
@@ -22,8 +22,8 @@ export default function AmtrakForm({ i, option, travelerTypes, tripType }) {
 					? "Child"
 					: "Infant"
 			);
-		}
-	}
+		});
+	});
 
 	function handleSubmit(e) {
 		e.preventDefault();

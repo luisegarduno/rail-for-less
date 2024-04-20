@@ -9,7 +9,7 @@ export default function RouteSelect({ value, setValue, values }) {
 		if (!values.includes(value)) {
 			setValue("Any-route");
 		}
-	}, [values]);
+	}, [setValue, value, values]);
 
 	return (
 		<Select

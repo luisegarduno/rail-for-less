@@ -11,6 +11,7 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import TextField from "@mui/material/TextField";
 import { StaticDatePicker } from "@mui/x-date-pickers/StaticDatePicker";
+import { useCallback } from 'react';
 dayjs.extend(utc);
 
 export default function DateRangeSelect({
@@ -51,6 +52,11 @@ export default function DateRangeSelect({
 		setTabEdit(i);
 	}
 
+	const [dateRangeEndEdit, setDateRangeEndEdit] = useState(dateRangeEnd);
+	const [dateRangeStartEdit, setDateRangeStartEdit] = useState(dateRangeStart);
+	const [daysEdit, setDaysEdit] = useState(days);
+	const [weekdaysEdit, setWeekdaysEdit] = useState(weekdays);
+
 	useEffect(() => {
 		setDateRangeStartSearch(dateRangeStartEdit);
 		setDateRangeEndSearch(dateRangeEndEdit);
@@ -58,14 +64,12 @@ export default function DateRangeSelect({
 			setMonthEdit(dateRangeStart.get("M"));
 			setMonth(dateRangeStart.get("M"));
 		}
-	}, []);
+	}, [dateRangeEndEdit, dateRangeStart, dateRangeStartEdit, setMonth, daysEdit, fares.length, searching, weekdaysEdit]);
 
 	const [anyDurationEdit, setAnyDurationEdit] = useState(anyDuration);
 	const [weeksEdit, setWeeksEdit] = useState(weeks);
 	const [weeksSelectedEdit, setWeeksSelectedEdit] = useState(weeksSelected);
-	const [daysEdit, setDaysEdit] = useState(days);
 	const [daysSelectedEdit, setDaysSelectedEdit] = useState(daysSelected);
-	const [weekdaysEdit, setWeekdaysEdit] = useState(weekdays);
 	const [weekendsEdit, setWeekendsEdit] = useState(weekends);
 
 	const [dateRangeStartSearch, setDateRangeStartSearch] = useState(
@@ -125,8 +129,6 @@ export default function DateRangeSelect({
 		return months;
 	}
 
-	const [dateRangeStartEdit, setDateRangeStartEdit] = useState(dateRangeStart);
-	const [dateRangeEndEdit, setDateRangeEndEdit] = useState(dateRangeEnd);
 
 	function handleMonthEdit(newMonthEdit) {
 		setMonthEdit(newMonthEdit);
@@ -164,6 +166,18 @@ export default function DateRangeSelect({
 		);
 	}
 
+	const containsDay = useCallback((weekday) => {
+		let date = dateRangeStartEdit.subtract(1, "d");
+		do {
+			date = date.add(1, "d");
+			const day = date.get("d");
+			if (weekday ? day > 0 && day < 6 : day === 0 || day === 6) {
+				return true;
+			}
+		} while (!date.isSame(dateRangeEndEdit, "D"));
+		return false;
+	}, [dateRangeStartEdit, dateRangeEndEdit]);
+
 	useEffect(() => {
 		const maxDays = dateRangeEndEdit.diff(dateRangeStartEdit, "d") + 1;
 		if (daysEdit > maxDays) {
@@ -187,7 +201,7 @@ export default function DateRangeSelect({
 			setDateRangeStartSearch(dateRangeStartEdit);
 			setDateRangeEndSearch(dateRangeEndEdit);
 		}
-	}, [dateRangeStartEdit, dateRangeEndEdit]);
+	}, [containsDay, dateRangeStartEdit, dateRangeEndEdit, daysEdit, fares.length, searching, weekdaysEdit, weekendsEdit, weeksEdit, weeksSelectedEdit]);
 
 	const [maxDateRangeEndEdit, setMaxDateRangeEndEdit] =
 		useState(maxDateRangeEnd);
@@ -240,18 +254,6 @@ export default function DateRangeSelect({
 		setMaxDateRangeEndEdit(
 			newMaxDateRangeEndEdit.isAfter(maxDate) ? maxDate : newMaxDateRangeEndEdit
 		);
-	}
-
-	function containsDay(weekday) {
-		let date = dateRangeStartEdit.subtract(1, "d");
-		do {
-			date = date.add(1, "d");
-			const day = date.get("d");
-			if (weekday ? day > 0 && day < 6 : day === 0 || day === 6) {
-				return true;
-			}
-		} while (!date.isSame(dateRangeEndEdit, "D"));
-		return false;
 	}
 
 	function getDateRangeString() {

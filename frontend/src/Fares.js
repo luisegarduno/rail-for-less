@@ -8,6 +8,7 @@ import Skeleton from "@mui/material/Skeleton";
 import TablePagination from "@mui/material/TablePagination";
 import { LineChart } from "@mui/x-charts/LineChart";
 import "./Fares.css";
+import { useCallback } from 'react';
 
 export default function Fares({
 	tripType,
@@ -33,7 +34,7 @@ export default function Fares({
 }) {
 	const numTravelers = Object.values(travelerTypes).reduce((a, b) => a + b, 0);
 
-	const getNeededInventory = (legAccommodation) =>
+	const getNeededInventory = useCallback((legAccommodation) =>
 		["Roomette", "Bedroom"].includes(legAccommodation.name)
 			? Math.ceil(numTravelers / 2)
 			: legAccommodation.name === "Family Room"
@@ -45,21 +46,21 @@ export default function Fares({
 							2
 					),
 					Math.ceil((travelerTypes.numChildren + travelerTypes.numInfants) / 2)
-			  )
-			: numTravelers;
+				)
+			: numTravelers, [numTravelers, travelerTypes.numAdults, travelerTypes.numSeniors, travelerTypes.numYouth, travelerTypes.numChildren, travelerTypes.numInfants]);
 
-	const isDiscountEligible = (legAccommodation, route, senior) =>
-		!(route !== "Acela" && legAccommodation.class === "Business") &&
-		!(legAccommodation.class === "First") &&
-		!(
-			!senior &&
-			route === "Acela" &&
-			[1, 2, 3, 4, 5].includes(
-				dayjs(legAccommodation.departureDateTime).get("d")
-			)
-		);
+	const isDiscountEligible = useCallback((legAccommodation, route, senior) =>
+			!(route !== "Acela" && legAccommodation.class === "Business") &&
+			!(legAccommodation.class === "First") &&
+			!(
+				!senior &&
+				route === "Acela" &&
+				[1, 2, 3, 4, 5].includes(
+					dayjs(legAccommodation.departureDateTime).get("d")
+				)
+			), []);
 
-	function getFare(legAccommodation, route) {
+	const getFare = useCallback((legAccommodation, route) => {
 		const result =
 			(travelerTypes.numAdults + travelerTypes.numYouth) *
 				legAccommodation.fare.rail +
@@ -81,17 +82,266 @@ export default function Fares({
 			) +
 			legAccommodation.neededInventory * legAccommodation.fare.accommodation;
 		return result;
-	}
+	}, [travelerTypes, isDiscountEligible]);
 
 	const [allOptions, setAllOptions] = useState([]);
 	const [optionsInDateRange, setOptionsInDateRange] = useState([]);
 	const [availableOptionsInDateRange, setAvailableOptionsInDateRange] =
 		useState([]);
 	const [sortedOptions, setSortedOptions] = useState([]);
-
 	const [avgDelays, setAvgDelays] = useState({});
+	const [chartXData, setChartXData] = useState([]);
+	const [chartYData, setChartYData] = useState([]);
 
-	async function updateAllOptions() {
+	const updateChart = useCallback((options) => {
+		if (options.length === 0) {
+			return;
+		}
+		options = options
+			.map((option) => ({
+				...option,
+				departureDateTime: option.departureDateTime.startOf("d"),
+			}))
+			.sort((a, b) => a.departureDateTime - b.departureDateTime);
+		const newChartX = [];
+		const newChartY = [];
+		let prevPrevDate = null;
+		let prevDate = options[0].departureDateTime;
+		let minFare = options[0].fare;
+		for (let i = 0; i < options.length; i++) {
+			let curDate = options[i].departureDateTime;
+			let curFare = options[i].fare;
+			if (curDate.format("M/D") !== prevDate.format("M/D")) {
+				if (
+					curDate.diff(prevDate, "d") > 1 &&
+					(prevPrevDate === null || prevDate.diff(prevPrevDate, "d") > 1)
+				) {
+					newChartX.push(prevDate.subtract(12, "h").toDate());
+					newChartY.push(minFare);
+					newChartX.push(prevDate.add(12, "h").toDate());
+					newChartY.push(minFare);
+				} else {
+					newChartX.push(prevDate.toDate());
+					newChartY.push(minFare);
+				}
+				prevPrevDate = prevDate;
+				if (prevDate.format("M/D") !== curDate.subtract(1, "d").format("M/D")) {
+					while (prevDate.format("M/D") !== curDate.format("M/D")) {
+						newChartX.push(prevDate.toDate());
+						newChartY.push(null);
+						prevDate = prevDate.add(1, "d");
+					}
+				}
+				prevDate = curDate;
+				minFare = curFare;
+			} else if (curFare < minFare) {
+				minFare = curFare;
+			}
+		}
+		newChartX.push(prevDate.toDate());
+		newChartY.push(minFare);
+		setChartXData(newChartX);
+		setChartYData(newChartY);
+	}, [setChartXData, setChartYData]);
+
+	const [sort, setSort] = useState("price");
+	const [loading, setLoading] = useState(true);
+
+	const sortOptions = useCallback((options) => {
+		const newSortedOptions = options
+			.slice()
+			.sort(
+				sort === "price"
+					? (a, b) =>
+							a.fare !== b.fare
+								? a.fare - b.fare
+								: a.elapsedSeconds - b.elapsedSeconds
+					: sort === "duration"
+					? (a, b) =>
+							a.elapsedSeconds !== b.elapsedSeconds
+								? a.elapsedSeconds - b.elapsedSeconds
+								: a.fare - b.fare
+					: sort === "departure"
+					? (a, b) =>
+							a.departureDateTime !== b.departureDateTime
+								? a.departureDateTime - b.departureDateTime
+								: a.fare - b.fare
+					: (a, b) =>
+							a.arrivalDateTime !== b.arrivalDateTime
+								? a.arrivalDateTime - b.arrivalDateTime
+								: a.fare - b.fare
+			);
+		if (newSortedOptions.length > 0) {
+			const minPrice = newSortedOptions[0].fare;
+			const minDuration = newSortedOptions[0].elapsedSeconds;
+			for (const [i, option] of newSortedOptions.entries()) {
+				option.minPrice =
+					option.fare === minPrice && option.elapsedSeconds === minDuration;
+				option.marginTop =
+					i > 0 && newSortedOptions[i - 1].minPrice && !option.minPrice;
+			}
+		}
+		setSortedOptions(newSortedOptions);
+		setLoading(false);
+	}, [sort, setSortedOptions, setLoading]);
+
+	const updateRoundtripOptions = useCallback((options) => {
+		let newRoundtripOptions = [];
+		if (tripType === "round-trip") {
+			const numDays = weeksSelected ? weeks * 7 : daysSelected ? days : 0;
+			options = options.map((option) => ({
+				...option,
+				departureDateTime: dayjs(option.departureDateTime),
+				arrivalDateTime: dayjs(option.arrivalDateTime),
+				travelLegs: option.travelLegs.map((leg) => ({
+					...leg,
+					departureDateTime: dayjs(leg.departureDateTime),
+					arrivalDateTime: dayjs(leg.arrivalDateTime),
+				})),
+			}));
+			const deptOptions = options.filter(
+				(option) => option.origin.code === origin.code
+			);
+			const returnOptions = options.filter(
+				(option) => option.origin.code === destination.code
+			);
+			for (const deptOption of deptOptions) {
+				for (const returnOption of returnOptions) {
+					if (
+						deptOption.arrivalDateTime <= returnOption.departureDateTime &&
+						(anyDuration ||
+							(numDays > 0
+								? returnOption.departureDateTime.diff(
+										deptOption.departureDateTime,
+										"d"
+									) +
+										1 ===
+									numDays
+								: true)) &&
+						(route === "Any-route" ||
+							[deptOption]
+								.concat(returnOption)
+								.map((trip) =>
+									trip.travelLegs.map((leg) => leg.route.replaceAll(" ", "-"))
+								)
+								.flat(1)
+								.includes(route))
+					) {
+						newRoundtripOptions.push({
+							departureDateTime: deptOption.departureDateTime,
+							arrivalDateTime: returnOption.departureDateTime,
+							elapsedSeconds:
+								deptOption.elapsedSeconds + returnOption.elapsedSeconds,
+							travelLegs: [deptOption, returnOption],
+							origin: deptOption.origin,
+							destination: deptOption.destination,
+							fare: deptOption.fare + returnOption.fare,
+						});
+					}
+				}
+			}
+		} else {
+			newRoundtripOptions = options
+				.filter(
+					(option) =>
+						route === "Any-route" ||
+						option.travelLegs.some(
+							(leg) => leg.route.replaceAll(" ", "-") === route
+						)
+				)
+				.map((option) => ({
+					...option,
+					departureDateTime: dayjs(option.departureDateTime),
+					arrivalDateTime: dayjs(option.arrivalDateTime),
+					travelLegs: [
+						{
+							...option,
+							departureDateTime: dayjs(option.departureDateTime),
+							arrivalDateTime: dayjs(option.arrivalDateTime),
+							travelLegs: option.travelLegs.map((leg) => ({
+								...leg,
+								departureDateTime: dayjs(leg.departureDateTime),
+								arrivalDateTime: dayjs(leg.arrivalDateTime),
+							})),
+						},
+					],
+				}));
+		}
+		updateChart(newRoundtripOptions);
+		sortOptions(newRoundtripOptions);
+	}, [tripType, weeksSelected, weeks, daysSelected, days, origin, destination, anyDuration, route, updateChart, sortOptions]);
+
+	const updateAvailableOptionsInDateRange = useCallback((options) => {
+		const newAvailableOptionsInDateRange = [];
+		const isSleeper = ["Roomette", "Bedroom", "Family Room"].includes(fareClass);
+		for (const option of structuredClone(options)) {
+			let isValid = true;
+			for (const leg of option.travelLegs) {
+				leg.legAccommodations = leg.legAccommodations
+					.map((legAccommodation) => ({
+						...legAccommodation,
+						neededInventory: getNeededInventory(legAccommodation),
+					}))
+					.filter(
+						(legAccommodation) =>
+							legAccommodation.availableInventory >=
+								legAccommodation.neededInventory &&
+							(fareClass === "Any class" ||
+								legAccommodation.class === (isSleeper ? "Sleeper" : fareClass))
+					)
+					.map((legAccommodation) => ({
+						...legAccommodation,
+						fare: getFare(legAccommodation, leg.route),
+						unitFare: legAccommodation.fare.total,
+					}));
+				if (leg.legAccommodations.length > 0) {
+					const match = leg.legAccommodations.find(
+						(legAccommodation) => legAccommodation.name === fareClass
+					);
+					const cheapest = leg.legAccommodations.reduce((a, b) =>
+						a.fare <= b.fare ? a : b
+					);
+					leg.legAccommodation = isSleeper ? (match ? match : cheapest) : cheapest;
+					delete leg.legAccommodations;
+					leg.fare = leg.legAccommodation.fare;
+				} else {
+					isValid = false;
+					break;
+				}
+			}
+			if (
+				isValid &&
+				(isSleeper
+					? option.travelLegs.some((leg) => leg.legAccommodation.name === fareClass)
+					: true)
+			) {
+				option.fare = option.travelLegs.reduce((a, b) => a + b.fare, 0);
+				newAvailableOptionsInDateRange.push(option);
+			}
+		}
+		setAvailableOptionsInDateRange(newAvailableOptionsInDateRange);
+		updateRoundtripOptions(newAvailableOptionsInDateRange);
+	}, [fareClass, setAvailableOptionsInDateRange, updateRoundtripOptions, getFare, getNeededInventory]);
+
+	const updateOptionsInDateRange = useCallback((options) => {
+		const newOptionsInDateRange = [];
+		for (const option of options) {
+			const isWeekday = [1, 2, 3, 4, 5].includes(
+				dayjs(option.departureDateTime).get("d")
+			);
+			if (
+				dayjs(option.departureDateTime) >= dateRangeStart &&
+				dayjs(option.departureDateTime) <= dateRangeEnd &&
+				(weekdays ? isWeekday : weekends ? !isWeekday : true)
+			) {
+				newOptionsInDateRange.push(structuredClone(option));
+			}
+		}
+		setOptionsInDateRange(newOptionsInDateRange);
+		updateAvailableOptionsInDateRange(newOptionsInDateRange);
+	}, [dateRangeStart, dateRangeEnd, weekdays, weekends, setOptionsInDateRange, updateAvailableOptionsInDateRange]);
+
+	const updateAllOptions = useCallback(async () => {
 		const CBN = {
 			name: "Canadian Border",
 			code: "CBN",
@@ -168,281 +418,21 @@ export default function Fares({
 		);
 		setAllOptions(newAllOptions);
 		updateOptionsInDateRange(newAllOptions);
-	}
-
-	function updateOptionsInDateRange(options) {
-		const newOptionsInDateRange = [];
-		for (const option of options) {
-			const isWeekday = [1, 2, 3, 4, 5].includes(
-				dayjs(option.departureDateTime).get("d")
-			);
-			if (
-				dayjs(option.departureDateTime) >= dateRangeStart &&
-				dayjs(option.departureDateTime) <= dateRangeEnd &&
-				(weekdays ? isWeekday : weekends ? !isWeekday : true)
-			) {
-				newOptionsInDateRange.push(structuredClone(option));
-			}
-		}
-		setOptionsInDateRange(newOptionsInDateRange);
-		updateAvailableOptionsInDateRange(newOptionsInDateRange);
-	}
-
-	function updateAvailableOptionsInDateRange(options) {
-		const newAvailableOptionsInDateRange = [];
-		const isSleeper = ["Roomette", "Bedroom", "Family Room"].includes(
-			fareClass
-		);
-		const formattedRoute = route.replaceAll("-", " ").replace("_", "/");
-		for (const option of structuredClone(options)) {
-			let isValid = true;
-			for (const leg of option.travelLegs) {
-				leg.legAccommodations = leg.legAccommodations
-					.map((legAccommodation) => ({
-						...legAccommodation,
-						neededInventory: getNeededInventory(legAccommodation),
-					}))
-					.filter(
-						(legAccommodation) =>
-							legAccommodation.availableInventory >=
-								legAccommodation.neededInventory &&
-							(fareClass === "Any class" ||
-								legAccommodation.class === (isSleeper ? "Sleeper" : fareClass))
-					)
-					.map((legAccommodation) => ({
-						...legAccommodation,
-						fare: getFare(legAccommodation, leg.route),
-						unitFare: legAccommodation.fare.total,
-					}));
-				if (leg.legAccommodations.length > 0) {
-					const match = leg.legAccommodations.find(
-						(legAccommodation) => legAccommodation.name === fareClass
-					);
-					const cheapest = leg.legAccommodations.reduce((a, b) =>
-						a.fare <= b.fare ? a : b
-					);
-					leg.legAccommodation = isSleeper
-						? match
-							? match
-							: cheapest
-						: cheapest;
-					delete leg.legAccommodations;
-					leg.fare = leg.legAccommodation.fare;
-				} else {
-					isValid = false;
-					break;
-				}
-			}
-			if (
-				isValid &&
-				(isSleeper
-					? option.travelLegs.some(
-							(leg) => leg.legAccommodation.name === fareClass
-					  )
-					: true)
-			) {
-				option.fare = option.travelLegs.reduce((a, b) => a + b.fare, 0);
-				newAvailableOptionsInDateRange.push(option);
-			}
-		}
-		setAvailableOptionsInDateRange(newAvailableOptionsInDateRange);
-		updateRoundtripOptions(newAvailableOptionsInDateRange);
-	}
-
-	function updateRoundtripOptions(options) {
-		let newRoundtripOptions = [];
-		if (tripType === "round-trip") {
-			const numDays = weeksSelected ? weeks * 7 : daysSelected ? days : 0;
-			options = options.map((option) => ({
-				...option,
-				departureDateTime: dayjs(option.departureDateTime),
-				arrivalDateTime: dayjs(option.arrivalDateTime),
-				travelLegs: option.travelLegs.map((leg) => ({
-					...leg,
-					departureDateTime: dayjs(leg.departureDateTime),
-					arrivalDateTime: dayjs(leg.arrivalDateTime),
-				})),
-			}));
-			const deptOptions = options.filter(
-				(option) => option.origin.code === origin.code
-			);
-			const returnOptions = options.filter(
-				(option) => option.origin.code === destination.code
-			);
-			for (const deptOption of deptOptions) {
-				for (const returnOption of returnOptions) {
-					if (
-						deptOption.arrivalDateTime <= returnOption.departureDateTime &&
-						(anyDuration ||
-							(numDays > 0
-								? returnOption.departureDateTime.diff(
-										deptOption.departureDateTime,
-										"d"
-								  ) +
-										1 ===
-								  numDays
-								: true)) &&
-						(route === "Any-route" ||
-							[deptOption]
-								.concat(returnOption)
-								.map((trip) =>
-									trip.travelLegs.map((leg) => leg.route.replaceAll(" ", "-"))
-								)
-								.flat(1)
-								.includes(route))
-					) {
-						newRoundtripOptions.push({
-							departureDateTime: deptOption.departureDateTime,
-							arrivalDateTime: returnOption.departureDateTime,
-							elapsedSeconds:
-								deptOption.elapsedSeconds + returnOption.elapsedSeconds,
-							travelLegs: [deptOption, returnOption],
-							origin: deptOption.origin,
-							destination: deptOption.destination,
-							fare: deptOption.fare + returnOption.fare,
-						});
-					}
-				}
-			}
-		} else {
-			newRoundtripOptions = options
-				.filter(
-					(option) =>
-						route === "Any-route" ||
-						option.travelLegs.some(
-							(leg) => leg.route.replaceAll(" ", "-") === route
-						)
-				)
-				.map((option) => ({
-					...option,
-					departureDateTime: dayjs(option.departureDateTime),
-					arrivalDateTime: dayjs(option.arrivalDateTime),
-					travelLegs: [
-						{
-							...option,
-							departureDateTime: dayjs(option.departureDateTime),
-							arrivalDateTime: dayjs(option.arrivalDateTime),
-							travelLegs: option.travelLegs.map((leg) => ({
-								...leg,
-								departureDateTime: dayjs(leg.departureDateTime),
-								arrivalDateTime: dayjs(leg.arrivalDateTime),
-							})),
-						},
-					],
-				}));
-		}
-		updateChart(newRoundtripOptions);
-		sortOptions(newRoundtripOptions);
-	}
-
-	const [chartXData, setChartXData] = useState([]);
-	const [chartYData, setChartYData] = useState([]);
-
-	function updateChart(options) {
-		if (options.length === 0) {
-			return;
-		}
-		options = options
-			.map((option) => ({
-				...option,
-				departureDateTime: option.departureDateTime.startOf("d"),
-			}))
-			.sort((a, b) => a.departureDateTime - b.departureDateTime);
-		const newChartX = [];
-		const newChartY = [];
-		let prevPrevDate = null;
-		let prevDate = options[0].departureDateTime;
-		let minFare = options[0].fare;
-		for (let i = 0; i < options.length; i++) {
-			let curDate = options[i].departureDateTime;
-			let curFare = options[i].fare;
-			if (curDate.format("M/D") !== prevDate.format("M/D")) {
-				if (
-					curDate.diff(prevDate, "d") > 1 &&
-					(prevPrevDate === null || prevDate.diff(prevPrevDate, "d") > 1)
-				) {
-					newChartX.push(prevDate.subtract(12, "h").toDate());
-					newChartY.push(minFare);
-					newChartX.push(prevDate.add(12, "h").toDate());
-					newChartY.push(minFare);
-				} else {
-					newChartX.push(prevDate.toDate());
-					newChartY.push(minFare);
-				}
-				prevPrevDate = prevDate;
-				if (prevDate.format("M/D") !== curDate.subtract(1, "d").format("M/D")) {
-					while (prevDate.format("M/D") !== curDate.format("M/D")) {
-						newChartX.push(prevDate.toDate());
-						newChartY.push(null);
-						prevDate = prevDate.add(1, "d");
-					}
-				}
-				prevDate = curDate;
-				minFare = curFare;
-			} else if (curFare < minFare) {
-				minFare = curFare;
-			}
-		}
-		newChartX.push(prevDate.toDate());
-		newChartY.push(minFare);
-		setChartXData(newChartX);
-		setChartYData(newChartY);
-	}
-
-	const [sort, setSort] = useState("price");
-	const [loading, setLoading] = useState(true);
-
-	function sortOptions(options) {
-		const newSortedOptions = options
-			.slice()
-			.sort(
-				sort === "price"
-					? (a, b) =>
-							a.fare !== b.fare
-								? a.fare - b.fare
-								: a.elapsedSeconds - b.elapsedSeconds
-					: sort === "duration"
-					? (a, b) =>
-							a.elapsedSeconds !== b.elapsedSeconds
-								? a.elapsedSeconds - b.elapsedSeconds
-								: a.fare - b.fare
-					: sort === "departure"
-					? (a, b) =>
-							a.departureDateTime !== b.departureDateTime
-								? a.departureDateTime - b.departureDateTime
-								: a.fare - b.fare
-					: (a, b) =>
-							a.arrivalDateTime !== b.arrivalDateTime
-								? a.arrivalDateTime - b.arrivalDateTime
-								: a.fare - b.fare
-			);
-		if (newSortedOptions.length > 0) {
-			const minPrice = newSortedOptions[0].fare;
-			const minDuration = newSortedOptions[0].elapsedSeconds;
-			for (const [i, option] of newSortedOptions.entries()) {
-				option.minPrice =
-					option.fare === minPrice && option.elapsedSeconds === minDuration;
-				option.marginTop =
-					i > 0 && newSortedOptions[i - 1].minPrice && !option.minPrice;
-			}
-		}
-		setSortedOptions(newSortedOptions);
-		setLoading(false);
-	}
+	}, [fares, stations, setMutualRoutes, setFareClasses, setAllOptions, updateOptionsInDateRange]);
 
 	useEffect(() => {
 		setTimeout(updateAllOptions, 100);
-	}, []);
+	}, [updateAllOptions]);
 
 	const [initialized, setInitialized] = useState(0);
-	function isInitialized() {
+	const isInitialized = useCallback(() => {
 		if (initialized === 4) {
 			return true;
 		} else {
 			setInitialized((initialized) => initialized + 1);
 			return false;
 		}
-	}
+	}, [initialized, setInitialized]);
 
 	useEffect(() => {
 		if (!isInitialized()) {
@@ -452,7 +442,7 @@ export default function Fares({
 		setTimeout(() => {
 			updateAvailableOptionsInDateRange(optionsInDateRange);
 		}, 100);
-	}, [travelerTypes, fareClass, route]);
+	}, [isInitialized, optionsInDateRange, updateAvailableOptionsInDateRange, travelerTypes, fareClass, route]);
 
 	useEffect(() => {
 		if (!isInitialized()) {
@@ -462,7 +452,7 @@ export default function Fares({
 		setTimeout(() => {
 			updateRoundtripOptions(availableOptionsInDateRange);
 		}, 100);
-	}, [weeks, weeksSelected, days, daysSelected]);
+	}, [availableOptionsInDateRange, isInitialized, updateRoundtripOptions, weeks, weeksSelected, days, daysSelected]);
 
 	useEffect(() => {
 		if (!isInitialized()) {
@@ -472,14 +462,14 @@ export default function Fares({
 		setTimeout(() => {
 			updateOptionsInDateRange(allOptions);
 		}, 100);
-	}, [dateRangeStart, dateRangeEnd, weekdays, weekends]);
+	}, [allOptions, isInitialized, updateOptionsInDateRange, dateRangeStart, dateRangeEnd, weekdays, weekends]);
 
 	useEffect(() => {
 		if (!isInitialized()) {
 			return;
 		}
 		sortOptions(sortedOptions);
-	}, [sort]);
+	}, [isInitialized, sort, sortOptions, sortedOptions]);
 
 	const [page, setPage] = useState(0);
 	const [rowsPerPage, setRowsPerPage] = useState(10);

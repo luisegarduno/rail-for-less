@@ -9,24 +9,59 @@ export default function Progress({
 	progressText,
 	searchError,
 }) {
-	const observer = new MutationObserver((mutations) => {
-		for (const mutation of mutations) {
-			if (
-				mutation.addedNodes.length > 0 &&
-				mutation.addedNodes[0].id !== "percent"
-			) {
-				document
-					.querySelector("#progress-container span div")
-					.appendChild(document.getElementById("percent"));
+	useEffect(() => {
+		const observer = new MutationObserver((mutations) => {
+			for (const mutation of mutations) {
+				if (
+					mutation.addedNodes.length > 0 &&
+					mutation.addedNodes[0].id !== "percent"
+				) {
+					document
+						.querySelector("#progress-container span div")
+						.appendChild(document.getElementById("percent"));
+				}
 			}
-		}
-	});
+		});
+
+		setTimeout(() => {
+			const digits = document.querySelector(
+				"#progress-container span > div > div"
+			);
+			digits.style.display = "flex";
+			digits.style.flexDirection = "column";
+			digits.style.alignItems = "flex-end";
+			const digitsContainer = digits.parentElement;
+			const percent = document.createElement("div");
+			percent.style.fontSize = "7rem";
+			percent.style.height = digitsContainer.lastChild.style.height;
+			percent.id = "percent";
+			percent.innerHTML = "%";
+			digitsContainer.appendChild(percent);
+			observer.observe(digitsContainer, { childList: true });
+		}, 100);
+	}, []);
+
+	// Rest of the code...
+
 
 	useEffect(() => {
 		setTimeout(() => {
 			const digits = document.querySelector(
 				"#progress-container span > div > div"
 			);
+			const observer = new MutationObserver((mutations) => {
+				for (const mutation of mutations) {
+					if (
+						mutation.addedNodes.length > 0 &&
+						mutation.addedNodes[0].id !== "percent"
+					) {
+						document
+							.querySelector("#progress-container span div")
+							.appendChild(document.getElementById("percent"));
+					}
+				}
+			});
+
 			digits.style.display = "flex";
 			digits.style.flexDirection = "column";
 			digits.style.alignItems = "flex-end";
