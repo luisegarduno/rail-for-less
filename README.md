@@ -11,6 +11,10 @@ This fork allows you to run the most recent version locally (as of 04/20/2024 ðŸ
 * Node.js
 * npm or yarn
 * Docker & Docker Compose (only for option 1)
+* `.env` file located in *frontend/*, with the following:
+```text
+REACT_APP_API_SUBDOMAIN=api
+```
 
 ## Instructions
 
