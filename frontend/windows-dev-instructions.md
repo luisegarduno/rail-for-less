@@ -14,7 +14,7 @@ git clone https://github.com/luisegarduno/rail-for-less.git
 "proxy": "http://localhost:5000"
 ```
 
-3. Follow instructions in `rail-for-less/client/src/Form.js` to change WebSocket address
+3. Follow instructions in [`rail-for-less/client/src/Form.js`](https://github.com/tikkisean/rail-for-less/blob/16d5ee05dbef9f6baf3dd04bcab234bc29b276b2/client/src/Form.js#L401) to change WebSocket address
 
 4. Install Python packages in `rail-for-less/server/`:
 ```bash
