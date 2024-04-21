@@ -1,0 +1,52 @@
+Windows Development Instructions
+
+conda create -yn nodey nodejs=14.17.1
+
+1. Clone this repository and switch to the correct branch
+```bash
+git clone https://github.com/luisegarduno/rail-for-less.git; git checkout v1
+```
+
+2. Add the following line to [client/package.json](https://github.com/luisegarduno/rail-for-less/blob/v1/client/package.json):
+```bash
+"proxy": "http://localhost:5000",
+```
+
+3. In *src/Form.js*, comment out [Line 399](https://github.com/luisegarduno/rail-for-less/blob/16d5ee05dbef9f6baf3dd04bcab234bc29b276b2/client/src/Form.js#L399) & remove "//" on [Line 402](https://github.com/luisegarduno/rail-for-less/blob/16d5ee05dbef9f6baf3dd04bcab234bc29b276b2/client/src/Form.js#L402). It should now look like the following
+```js
+          //const socket = new WebSocket("wss://railforless.us/ws");
+
+          // Enable the line below during development
+          const socket = new WebSocket("ws://localhost:5001");
+```
+
+4. Install requirements:
+```bash
+cd server; pip3 install -r requirements.txt
+```
+
+5. Download chromedriver for your Chrome version from [ChromeDriver](https://chromedriver.chromium.org/downloads), name this file "chromedriver" and place it in `rail-for-less/server/`
+
+6. In *server/ws.py*, comment out [Line 6](https://github.com/luisegarduno/rail-for-less/blob/16d5ee05dbef9f6baf3dd04bcab234bc29b276b2/server/ws.py#L6C1-L6C37) to disable pyvirtualdisplay
+
+7. Install Flask-CORS:
+```bash
+pip3 install flask-cors
+```
+
+8. Follow instructions in `rail-for-less/server/api.py` to enable Flask-CORS (if developing on windows)
+
+9. Run the API:
+```bash
+python3 server/api.py
+```
+
+10. Run websocket?
+```bash
+python3 rail-for-less/server/ws.py
+```
+
+11. Open React development server in `rail-for-less/client`
+```bash
+npm install; npm start
+```
