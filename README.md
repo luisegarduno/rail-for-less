@@ -2,7 +2,7 @@
 
 A fork of [rail-for-less](https://github.com/tikkisean/rail-for-less)
 
-For instructions on how to run version 1, switch to branch "v1" (or click [here](https://github.com/luisegarduno/rail-for-less/tree/v1)). Still working on getting a couple of things working, as there are missing steps within the original "instructions".
+For instructions on **how to run version 1, switch to branch "v1"** (or click [here](https://github.com/luisegarduno/rail-for-less/tree/v1)). Still working on getting a couple of things working, as there are missing steps within the original "instructions".
 
 This fork allows you to run the most recent version locally (as of 04/20/2024 😎). Currently still working out some issues though.
 
