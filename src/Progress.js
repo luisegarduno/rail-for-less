@@ -11,20 +11,21 @@ export default function Progress({
 	progressText,
 	searchError,
 }) {
-	const observer = new MutationObserver((mutations) => {
-		for (const mutation of mutations) {
-			if (
-				mutation.addedNodes.length > 0 &&
-				mutation.addedNodes[0].id !== "percent"
-			) {
-				document
-					.querySelector("#progress-container span div")
-					.appendChild(document.getElementById("percent"));
-			}
-		}
-	});
-
+	
 	useEffect(() => {
+		const observer = new MutationObserver((mutations) => {
+			for (const mutation of mutations) {
+				if (
+					mutation.addedNodes.length > 0 &&
+					mutation.addedNodes[0].id !== "percent"
+				) {
+					document
+						.querySelector("#progress-container span div")
+						.appendChild(document.getElementById("percent"));
+				}
+			}
+		});
+
 		setTimeout(() => {
 			const digits = document.querySelector(
 				"#progress-container span > div > div"

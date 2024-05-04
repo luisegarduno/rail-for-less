@@ -53,7 +53,7 @@ export default function Map({
 				d3.select(`#${destination.id}`).dispatch("click");
 			}
 		}
-	}, [updateMap]);
+	}, [updateMap, destination, origin]);
 
 	let mapContainer, width, height, scaleExtent, zoom;
 
