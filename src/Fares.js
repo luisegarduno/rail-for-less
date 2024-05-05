@@ -700,7 +700,7 @@ export default function Fares({
 					<span>Sort by</span>
 					<Select
 						onChange={(e) => setSort(e.target.value)}
-						disableUnderline
+						disableunderline="true"
 						value={sort}
 						variant="standard"
 					>

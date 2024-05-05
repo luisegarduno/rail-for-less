@@ -164,7 +164,7 @@ export default function DateRangePopover({
 											className={`select ${
 												tripDuration.type !== "week" ? "not-" : ""
 											}selected`}
-											disableUnderline
+											disableunderline="true"
 											onChange={(e) =>
 												setTripDuration({ type: "week", val: e.target.value })
 											}
@@ -197,7 +197,7 @@ export default function DateRangePopover({
 										className={`select ${
 											tripDuration.type !== "day" ? "not-" : ""
 										}selected`}
-										disableUnderline
+										disableunderline="true"
 										MenuProps={{
 											style: {
 												maxHeight: "20rem",

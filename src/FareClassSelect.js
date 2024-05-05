@@ -19,7 +19,7 @@ export default function FareClassSelect({
 	return (
 		<Select
 			className={`select ${!selected ? "not-" : ""}selected`}
-			disableUnderline
+			disableunderline="true"
 			onChange={(e) => setValue(e.target.value)}
 			onClose={() => setSelected(false)}
 			onOpen={() => setSelected(true)}

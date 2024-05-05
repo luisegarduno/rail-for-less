@@ -10,7 +10,7 @@ export default function TripTypeSelect({ value, setValue }) {
 	return (
 		<Select
 			className={`select ${!selected ? "not-" : ""}selected`}
-			disableUnderline
+			disableunderline={value.toString()}
 			onChange={(e) => setValue(e.target.value)}
 			onClose={() => setSelected(false)}
 			onOpen={() => setSelected(true)}

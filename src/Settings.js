@@ -95,7 +95,7 @@ export default function Settings({
 						<span>Station format</span>
 						<Select
 							className="select-station-format"
-							disableUnderline
+							disableunderline="true"
 							onChange={(e) => handleStationFormat(e.target.value)}
 							value={stationFormat}
 							variant="standard"
